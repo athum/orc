@@ -74,7 +74,9 @@ func createTreeReader(schema *TypeDescription, s *Stripe) (TreeReader, error) {
 			encoding,
 		)
 	case CategoryDecimal:
-		return NewDecimalTreeReader(
+		// Swapped BSONDecimalTreeReader for DecimalTreeReader to return decimal types
+		// in a BSON-friendly way. See explanation at definition of BSONDecimalTreeReader.
+		return NewBSONDecimalTreeReader(
 			s.get(streamName{id, proto.Stream_PRESENT}),
 			s.get(streamName{id, proto.Stream_DATA}),
 			s.get(streamName{id, proto.Stream_SECONDARY}),

@@ -11,6 +11,9 @@ import (
 	"time"
 
 	"github.com/scritchley/orc/proto"
+	"go.mongodb.org/mongo-driver/bson/bsontype"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 )
 
 var (
@@ -948,4 +951,56 @@ func (d *DecimalTreeReader) Err() error {
 		return err
 	}
 	return d.BaseTreeReader.Err()
+}
+
+// BSONDecimalTreeReader wraps the DecimalTreeReader to support BSON-readable decimal types.
+// Implemented this way because BSON is unable to unmarshall the Decimal struct returned by
+// DecimalTreeReader into a BSON Decimal128 type. BSONTDecimalTreeReader instead returns
+// a bsoncore.Value struct that will correctly represent the
+type BSONDecimalTreeReader struct {
+	*DecimalTreeReader
+	bsonVal bsoncore.Value
+}
+
+// NewBSONDecimalTreeReader returns a new instances of a BSONDecimalTreeReader or an error if one occurs.
+func NewBSONDecimalTreeReader(present, data, secondary io.Reader, encoding *proto.ColumnEncoding, precision, scale int) (*BSONDecimalTreeReader, error) {
+	d, err := NewDecimalTreeReader(present, data, secondary, encoding, precision, scale)
+	if err != nil {
+		return nil, err
+	}
+	return &BSONDecimalTreeReader{DecimalTreeReader: d}, nil
+}
+
+// Next overrides the DecimalTreeReader  method.
+func (bd *BSONDecimalTreeReader) Next() bool {
+	if !bd.BaseTreeReader.Next() {
+		return false
+	}
+	if !bd.BaseTreeReader.IsPresent() {
+		return true
+	}
+	if !bd.secondary.Next() {
+		return false
+	}
+
+	d128, err := primitive.ParseDecimal128(bd.Decimal().String())
+	if err != nil {
+		bd.err = err
+		return false
+	}
+
+	bd.bsonVal = bsoncore.Value{
+		Type: bsontype.Decimal128,
+		Data: bsoncore.AppendDecimal128(nil, d128),
+	}
+	return true
+}
+
+// Value overrides the DecimalTreeReader method.
+func (bd *BSONDecimalTreeReader) Value() interface{} {
+	if !bd.DecimalTreeReader.BaseTreeReader.IsPresent() {
+		return nil
+	}
+
+	return bd.bsonVal
 }

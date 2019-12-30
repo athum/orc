@@ -1,6 +1,7 @@
 package orc
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -29,6 +30,8 @@ func TestTypeDescriptionParse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	fmt.Println(td.GetField("f4"))
 
 	expected = "struct<f1:int,f2:string,f3:decimal(38,10),f4:array<struct<f5:int,f6:string>>>"
 	if td.String() != expected {
