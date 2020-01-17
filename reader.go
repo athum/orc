@@ -341,15 +341,6 @@ func (r *Reader) NumRows() int {
 	return int(r.footer.GetNumberOfRows())
 }
 
-func (r *Reader) NumStripes() (int, error) {
-	stripes, err := r.getStripes()
-	if err != nil {
-		return 0, err
-	}
-
-	return len(stripes), nil
-}
-
 type Stripe struct {
 	included []int
 	*proto.StripeInformation
